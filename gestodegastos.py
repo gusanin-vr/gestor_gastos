@@ -8,7 +8,7 @@ def main():
                 print("El monto debe ser positivo.")
         except ValueError:
             print("Entrada inválida. Intente de nuevo.")
-
+ff
     total_gastado = 0.0
 
     while True:
