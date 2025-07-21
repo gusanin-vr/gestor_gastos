@@ -1,0 +1,180 @@
+
+import os
+
+class Cuenta:
+    def __init__(self, nombre, saldo_inicial=0.0, movimientos=None):
+        self.nombre = nombre
+        self.saldo_inicial = saldo_inicial
+        self.saldo_actual = saldo_inicial
+        self.total_gastado = 0.0
+        self.movimientos = movimientos if movimientos else []
+        if movimientos:
+            self.recalcular_saldos()
+        else:
+            self.movimientos.append(f"Saldo inicial: +${saldo_inicial:.2f}")
+
+    def recalcular_saldos(self):
+        self.saldo_actual = 0.0
+        self.total_gastado = 0.0
+        for mov in self.movimientos:
+            if "Ingreso: +" in mov:
+                self.saldo_actual += float(mov.split("+$")[1])
+            elif "Gasto: -" in mov:
+                monto = float(mov.split("-$")[1])
+                self.saldo_actual -= monto
+                self.total_gastado += monto
+            elif "Saldo inicial: +" in mov:
+                self.saldo_inicial = float(mov.split("+$")[1])
+        if self.saldo_inicial == 0:
+            self.saldo_inicial = self.saldo_actual + self.total_gastado
+
+    def ingresar_dinero(self):
+        try:
+            monto = float(input("Monto a ingresar: "))
+            if monto > 0:
+                self.saldo_actual += monto
+                self.movimientos.append(f"Ingreso: +${monto:.2f}")
+                print("¡Ingreso registrado!")
+            else:
+                print("El monto debe ser positivo.")
+        except ValueError:
+            print("Error: Ingrese un número válido.")
+
+    def gastar_dinero(self):
+        try:
+            monto = float(input("Monto a gastar: "))
+            if 0 < monto <= self.saldo_actual:
+                self.saldo_actual -= monto
+                self.total_gastado += monto
+                self.movimientos.append(f"Gasto: -${monto:.2f}")
+                print("¡Gasto registrado!")
+            else:
+                print(f"Error: Monto inválido. Saldo disponible: ${self.saldo_actual:.2f}")
+        except ValueError:
+            print("Error: Ingrese un número válido.")
+
+    def ver_historial(self):
+        print(f"\n=== HISTORIAL DE {self.nombre.upper()} ===")
+        if not self.movimientos:
+            print("No hay movimientos registrados.")
+        else:
+            for i, mov in enumerate(self.movimientos, 1):
+                print(f"{i}. {mov}")
+        input("\nPresione Enter para continuar...")
+
+    def mostrar_resumen(self):
+        porcentaje = (self.total_gastado / self.saldo_inicial) * 100 if self.saldo_inicial > 0 else 0
+        print(f"\n=== DATOS DE LA CUENTA {self.nombre.upper()} ===")
+        print(f"Saldo actual: ${self.saldo_actual:.2f}")
+        print(f"Total gastado: ${self.total_gastado:.2f}")
+        print(f"Porcentaje gastado: {porcentaje:.2f}%")
+
+    def guardar(self):
+        filename = f"{self.nombre}.txt"
+        with open(filename, 'w') as f:
+            for mov in self.movimientos:
+                f.write(f"{mov}\n")
+
+
+class GestorCuentas:
+    def __init__(self):
+        self.cuentas = {}
+        self.cuenta_actual = None
+
+    def crear_cuenta(self):
+        nombre = input("Nombre de la nueva cuenta: ").strip()
+        if nombre in self.cuentas:
+            print("Ya existe una cuenta con ese nombre.")
+            return
+        try:
+            saldo = float(input("Saldo inicial: "))
+            if saldo <= 0:
+                print("El saldo debe ser mayor que cero.")
+                return
+            cuenta = Cuenta(nombre, saldo)
+            self.cuentas[nombre] = cuenta
+            self.cuenta_actual = cuenta
+            print(f"Cuenta '{nombre}' creada y seleccionada.")
+        except ValueError:
+            print("Error: Ingrese un número válido.")
+
+    def cargar_cuenta(self):
+        nombre = input("Nombre de la cuenta a cargar: ").strip()
+        filename = f"{nombre}.txt"
+        if not os.path.exists(filename):
+            print("No se encontró una cuenta con ese nombre.")
+            return
+        with open(filename, 'r') as f:
+            movimientos = [line.strip() for line in f]
+        cuenta = Cuenta(nombre, movimientos=movimientos)
+        self.cuentas[nombre] = cuenta
+        self.cuenta_actual = cuenta
+        print(f"Cuenta '{nombre}' cargada y seleccionada.")
+
+    def seleccionar_cuenta(self):
+        if not self.cuentas:
+            print("No hay cuentas cargadas.")
+            return
+        print("Cuentas disponibles:")
+        for nombre in self.cuentas:
+            print(f"- {nombre}")
+        nombre = input("Seleccione el nombre de la cuenta: ").strip()
+        if nombre in self.cuentas:
+            self.cuenta_actual = self.cuentas[nombre]
+            print(f"Cuenta '{nombre}' seleccionada.")
+        else:
+            print("Nombre inválido.")
+
+    def menu_principal(self):
+        while True:
+            print("\n=== MENÚ PRINCIPAL ===")
+            print("1. Crear nueva cuenta")
+            print("2. Cargar cuenta existente")
+            print("3. Seleccionar cuenta cargada")
+            print("4. Ir al menú de cuenta")
+            print("5. Salir")
+            opcion = input("Seleccione una opción: ")
+            if opcion == '1':
+                self.crear_cuenta()
+            elif opcion == '2':
+                self.cargar_cuenta()
+            elif opcion == '3':
+                self.seleccionar_cuenta()
+            elif opcion == '4':
+                if self.cuenta_actual:
+                    self.menu_cuenta()
+                else:
+                    print("Debe seleccionar o cargar una cuenta primero.")
+            elif opcion == '5':
+                print("¡Hasta luego!")
+                if self.cuenta_actual:
+                    self.cuenta_actual.guardar()
+                break
+            else:
+                print("Opción no válida.")
+
+    def menu_cuenta(self):
+        while True:
+            self.cuenta_actual.mostrar_resumen()
+            print("\n1. Ingresar dinero")
+            print("2. Gastar dinero")
+            print("3. Ver historial")
+            print("4. Guardar y volver al menú principal")
+            opcion = input("Seleccione una opción: ")
+            if opcion == '1':
+                self.cuenta_actual.ingresar_dinero()
+            elif opcion == '2':
+                self.cuenta_actual.gastar_dinero()
+            elif opcion == '3':
+                self.cuenta_actual.ver_historial()
+            elif opcion == '4':
+                self.cuenta_actual.guardar()
+                print("Cuenta guardada.")
+                break
+            else:
+                print("Opción no válida.")
+
+
+if __name__ == "__main__":
+    gestor = GestorCuentas()
+    gestor.menu_principal()
